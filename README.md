@@ -2,7 +2,7 @@
 
 ## Description
 
-Le projet XYZ est une application bancaire simple implémentée en langage C. Il offre des fonctionnalités telles que la création de comptes, les transactions de versement et de retrait, la suppression de comptes, l'affichage des détails du compte, et bien plus encore.
+Le projet E-Bank est une application bancaire simple implémentée en langage C. Il offre des fonctionnalités telles que la création de comptes, les transactions de versement et de retrait, la suppression de comptes, l'affichage des détails du compte, et bien plus encore.
 
 ## Fonctionnalités
 
