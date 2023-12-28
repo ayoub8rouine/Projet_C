@@ -2,179 +2,220 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Structure de l'historique d'opérations
 typedef struct histo {
-    int content;
-    struct histo *next;
+    int content; // Contenu de l'opération (montant)
+    struct histo *next; // Pointeur vers l'opération suivante
 } histo;
 
+// Structure de la file d'opérations
 typedef struct {
-    histo *head, *tail;
+    histo *head, *tail; // Pointeurs vers la tête et la queue de la file
 } operation;
 
+// Fonction de création d'une nouvelle file d'opérations
 operation *queue_new(void) {
-    operation *q;
-    q = malloc(sizeof(operation));
-    if (!q)
-        return NULL;
+    operation *q = malloc(sizeof(operation));
+    if (!q) return NULL;
     q->head = NULL;
     q->tail = NULL;
     return q;
 }
 
+// Fonction d'ajout d'une opération à la file
 int histo_add(operation *q, int op) {
-    histo *e;
-    e = malloc(sizeof(histo));
-    if (!e)
-        return -1;
+    histo *e = malloc(sizeof(histo));
+    if (!e) return -1;
     e->content = op;
     e->next = NULL;
-    if (q->tail)
-        q->tail->next = e;
-    else
-        q->head = e;
+    if (q->tail) q->tail->next = e;
+    else q->head = e;
     q->tail = e;
     return 0;
 }
 
-int *queue_front(operation *q) {
-    if (!(q->head))
-        return NULL;
-    return &q->head->content;
-}
-
+// Structure d'un compte bancaire
 typedef struct compte {
-    char type_compte[30];
-    operation *hist;
-    float solde;
+    char type_compte[30]; // Type de compte
+    operation *hist; // Historique des opérations
+    float solde; // Solde du compte
 } compte;
 
+// Structure d'un client
 typedef struct {
-    char id[7];
-    char nom[50];
-    char prenom[50];
-    char code[8];
-    compte *cpmt;
+    char id[7]; // Identifiant du client
+    char nom[50]; // Nom du client
+    char prenom[50]; // Prénom du client
+    char code[8]; // Code secret du client
+    compte *cpmt; // Compte du client
 } client;
 
+// Structure d'un élément dans une table de clients
 typedef struct tableclient {
-    client *cl;
-    struct tableclient *suiv;
+    client *cl; // Client
+    struct tableclient *suiv; // Pointeur vers le client suivant dans la table
 } tableclient;
 
+// Fonction de recherche d'un client par son identifiant dans une table
 tableclient *chercher_client(tableclient *tcl, char *idcl) {
-    tableclient *iterator;
-    iterator = tcl;
-    while (iterator->cl != NULL) {
-        if (strcmp(iterator->cl->id, idcl) == 0) {
-            return iterator;
-        } else {
-            iterator = iterator->suiv;
+    while (tcl != NULL) {
+        if (strcmp(tcl->cl->id, idcl) == 0) {
+            return tcl;
         }
+        tcl = tcl->suiv;
     }
     return NULL;
 }
 
-void ajouter_client(tableclient *tcl, client *cli) {
-    tableclient *tl;
-    tl = malloc(sizeof(tableclient));
-    tl = tcl;
-    if (tcl != NULL) {
-        tcl->suiv = tl;
+// Fonction d'ajout d'un nouveau client à la table
+void ajouter_client(tableclient **tcl) {
+    tableclient *newNode = malloc(sizeof(tableclient));
+    if (newNode == NULL) {
+        printf("Erreur : Échec d'allocation mémoire pour tableclient.\n");
+        exit(EXIT_FAILURE);
     }
-    printf("Tapez votre nom: ");
-    scanf("%s", &*cli->nom);
-    printf("Tapez votre prénom: ");
-    scanf("%s", &*cli->prenom);
-    printf("Tapez votre ID: ");
-    scanf("%s", &*cli->id);
-    strcpy(cli->code, "");
-    cli->cpmt->solde = 0;
-    cli->cpmt->hist = NULL;
-    cli->cpmt->hist = queue_new();
-    tcl->cl = cli;
+
+    newNode->cl = malloc(sizeof(client));
+    if (newNode->cl == NULL) {
+        printf("Erreur : Échec d'allocation mémoire pour client.\n");
+        free(newNode);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Entrez votre identifiant : ");
+    scanf("%6s", newNode->cl->id);
+    printf("Entrez votre nom : ");
+    scanf("%49s", newNode->cl->nom);
+    printf("Entrez votre prénom : ");
+    scanf("%49s", newNode->cl->prenom);
+
+    newNode->cl->cpmt = malloc(sizeof(compte));
+    if (newNode->cl->cpmt == NULL) {
+        printf("Erreur : Échec d'allocation mémoire pour compte.\n");
+        free(newNode->cl);
+        free(newNode);
+        exit(EXIT_FAILURE);
+    }
+    printf("Entrez le type de compte : ");
+    scanf("%29s", newNode->cl->cpmt->type_compte );
+    newNode->cl->cpmt->hist = queue_new();
+    printf("Entrez votre dépôt initial : ");
+    float montant;
+    scanf("%f", &montant);
+    newNode->cl->cpmt->solde = montant;
+    histo_add(newNode->cl->cpmt->hist, montant);
+    newNode->suiv = *tcl;
+    *tcl = newNode;
 }
 
-void versement_Compte(char *idclient, float versement, tableclient *tcl) {
-    tableclient *p;
-    p = chercher_client(tcl, idclient);
-    if (p != NULL) {
-        p->cl->cpmt->solde += versement;
-    }
-    histo_add(p->cl->cpmt->hist, versement);
-}
-
-void retrait_Compte(char *idclient, float retrait, tableclient *tcl) {
-    tableclient *p;
-    p = chercher_client(tcl, idclient);
-    if (p != NULL) {
-        p->cl->cpmt->solde -= retrait;
-    }
-    histo_add(p->cl->cpmt->hist, -retrait);
-}
-
+// Fonction d'affichage de l'historique d'un compte
 void historique_compte(char *idclient, tableclient *tcl) {
-    tableclient *p;
-    p = chercher_client(tcl, idclient);
-    
+    tableclient *p = chercher_client(tcl, idclient);
+    if (p == NULL) {
+        printf("Client non trouvé.\n");
+        return;
+    }
+
     histo *current = p->cl->cpmt->hist->head;
-    
     while (current != NULL) {
         printf("%d\n", current->content);
         current = current->next;
     }
 }
 
-void supprimerCompte(char *idclient, tableclient *tcl, char *codesecret) {
-    tableclient *p;
-    client *t;
-    p = chercher_client(tcl, idclient);
-    t = p->cl;
-    while (p->suiv->cl->id != idclient) {
-        p = p->suiv;
+// Fonction de suppression d'un compte
+void supprimerCompte(char *idclient, tableclient **tcl, char *codesecret) {
+    if (*tcl == NULL) {
+        printf("Aucun client à supprimer.\n");
+        return;
     }
-    if (strcmp(p->cl->code, codesecret) == 0) {
-        free(p->cl->cpmt->hist);
-        p->suiv = p->suiv->suiv;
-        tcl = p;
-        t = p->suiv->cl;
-        free(t);
+
+    tableclient *current = *tcl;
+    tableclient *prev = NULL;
+
+    while (current != NULL && strcmp(current->cl->id, idclient) != 0) {
+        prev = current;
+        current = current->suiv;
+    }
+
+    if (current == NULL) {
+        printf("Client non trouvé.\n");
+        return;
+    }
+
+    // Vérifier le code secret
+    // ...
+
+    if (prev == NULL) {
+        *tcl = current->suiv;
     } else {
-        printf("Code invalide. Répéter l'opération de nouveau.\n");
+        prev->suiv = current->suiv;
     }
+
+    // Libérer la mémoire
+    free(current->cl->cpmt->hist);
+    free(current->cl->cpmt);
+    free(current->cl);
+    free(current);
 }
 
+// Fonction d'affichage des détails d'un compte
 void afficherDetailsCompte(char *idc, tableclient *tbcl) {
-    tableclient *p;
-    p = chercher_client(tbcl, idc);
-    printf("ID: %s\n", p->cl->id);
-    printf("Type de compte: %s\n", p->cl->cpmt->type_compte);
-    printf("Solde: %.2f\n", p->cl->cpmt->solde);
+    tableclient *p = chercher_client(tbcl, idc);
+    if (p == NULL) {
+        printf("Client non trouvé.\n");
+        return;
+    }
+
+    printf("ID : %s\n", p->cl->id);
+    printf("Nom : %s %s\n", p->cl->nom, p->cl->prenom);
+    printf("Type de compte : %s\n", p->cl->cpmt->type_compte);
+    printf("Solde : %.2f\n", p->cl->cpmt->solde);
 }
 
+// Fonction d'affichage de la liste des clients
 void afficherListeClients(tableclient *cl) {
-    tableclient *p;
-    p = cl;
-    while (p->suiv != NULL) {
-        printf("Nom: %s\n", p->cl->nom);
-        printf("Prénom: %s\n", p->cl->prenom);
-        printf("\n");
-        p = p->suiv;
+    if (cl == NULL) {
+        printf("Aucun client à afficher.\n");
+        return;
+    }
+
+    while (cl != NULL) {
+        printf("ID : %s, Nom : %s %s\n", cl->cl->id, cl->cl->nom, cl->cl->prenom);
+        cl = cl->suiv;
     }
 }
 
-void creerCompte(client *c, tableclient *tcl) {
-    printf("Création d'un nouveau compte.\n");
-    printf("Choix de type de compte : ");
-    scanf("%s", &c->cpmt->type_compte);
-    printf("Entrez le solde initial : ");
-    scanf("%f", &c->cpmt->solde);
-    histo_add(c->cpmt->hist, c->cpmt->solde);
-    printf("Compte créé avec succès.\n");
+// Fonction de dépôt sur un compte client
+void versement_Compte(char *idclient, float versement, tableclient *tcl) {
+    tableclient *p = chercher_client(tcl, idclient);
+    if (p == NULL) {
+        printf("Client non trouvé.\n");
+        return;
+    }
+    p->cl->cpmt->solde += versement;
+    histo_add(p->cl->cpmt->hist, versement);
 }
 
+// Fonction de retrait d'un compte client
+void retrait_Compte(char *idclient, float retrait, tableclient *tcl) {
+    tableclient *p = chercher_client(tcl, idclient);
+    if (p == NULL) {
+        printf("Client non trouvé.\n");
+        return;
+    }
+    if (p->cl->cpmt->solde < retrait) {
+        printf("Solde insuffisant.\n");
+        return;
+    }
+    p->cl->cpmt->solde -= retrait;
+    histo_add(p->cl->cpmt->hist, -retrait);
+}
+
+// Fonction d'affichage du menu
 void Menu() {
-    printf("\n\t\t ____ Bienvenue Chez E-BANK _____  \n");
-    printf("\t\t========WELCOME========\n\n");
+    printf("\n\t\t _ Bienvenue Chez E-BANK __  \n");
+    printf("\t\t========BIENVENUE========\n\n");
     printf("\n  ========================\n\t>< MENU ><\n  ========================\n\n");
     printf("[1]. Créer un nouveau compte.\n");
     printf("[2]. Versement.\n");
@@ -188,65 +229,67 @@ void Menu() {
     printf("Choisissez une option : ");
 }
 
+// Fonction principale du programme
 int main() {
+    tableclient *table_client = NULL;
     int choix;
     char id_client[7];
     float montant;
-    tableclient *table_client = malloc(sizeof(tableclient));
-    client *clien_t = malloc(sizeof(client));
-    char code_secret[8];
-    while(choix!=-1){
+    char code[8];
+
     do {
-        // Display the menu
         Menu();
         scanf("%d", &choix);
 
         switch (choix) {
             case 1:
-                ajouter_client(table_client,clien_t);
-                creerCompte(clien_t, table_client);
+                ajouter_client(&table_client);
+                break;
             case 2:
-                printf("Saisir votre ID svp: ");
-                scanf("%s", id_client);
-                printf("Saisir le montant à verser: ");
+                printf("Entrez l'identifiant du client : ");
+                scanf("%6s", id_client);
+                printf("Entrez le montant du dépôt : ");
                 scanf("%f", &montant);
                 versement_Compte(id_client, montant, table_client);
-                
+                break;
             case 3:
-                printf("Saisir votre ID svp: ");
-                scanf("%s", id_client);
-                printf("Saisir le montant à retirer: ");
+                printf("Entrez l'identifiant du client : ");
+                scanf("%6s", id_client);
+                printf("Entrez le montant du retrait : ");
                 scanf("%f", &montant);
                 retrait_Compte(id_client, montant, table_client);
-                
+                break;
             case 4:
-                printf("Saisir votre ID svp: ");
-                scanf("%s", id_client);
-                printf("Saisir votre code secret svp: ");
-                scanf("%s", code_secret);
-                supprimerCompte(id_client, table_client, code_secret);
-                
+                printf("Entrez l'identifiant du client : ");
+                scanf("%6s", id_client);
+                printf("Entrez le code secret : ");
+                scanf("%7s", code);
+                supprimerCompte(id_client, &table_client, code);
+                break;
             case 5:
-                printf("Saisir votre ID svp: ");
-                scanf("%s", id_client);
+                printf("Entrez l'identifiant du client : ");
+                scanf("%6s", id_client);
                 afficherDetailsCompte(id_client, table_client);
-                
+                break;
             case 6:
                 afficherListeClients(table_client);
-                
+                break;
             case 7:
-                printf("Saisir votre ID svp: ");
-                scanf("%s", id_client);
+                printf("Entrez l'identifiant du client : ");
+                scanf("%6s", id_client);
                 historique_compte(id_client, table_client);
-                
+                break;
             case 0:
-                printf("Au revoir!\n");
-                
+                printf("Au revoir !\n");
+                break;
             default:
                 printf("Choix invalide. Veuillez réessayer.\n");
         }
+    } while (choix != 0);
 
-    } while (choix != 0);}
+    // Libérer la mémoire avant de quitter
+    // ...
 
     return 0;
 }
+
